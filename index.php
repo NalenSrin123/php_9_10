@@ -33,6 +33,7 @@ global $con;
                     <th>Name</th>
                     <th>Price</th>
                     <th>Stock</th>
+                    <th>Expire</th>
                     <th>Image</th>
                     <th>User</th>
                     <th>Action</th>
@@ -51,11 +52,12 @@ global $con;
                                 <td>'.$row['name'].'</td>
                                 <td>'.$row['price'].'$</td>
                                 <td>'.$row['stock'].'</td>
+                                <td>'.$row['expire'].'</td>
                                 <td><img width="80" src="./uploads/'.$row['image'].'" alt=""></td>
                                 <td><img width="80" src="./uploads/'.$row['profile'].'" alt=""></td>
                                 <td>
-                                    <button class="btn btn-warning me-1" id="btnEdit">Edit</button>
-                                    <button class="btn btn-danger ">Delete</button>
+                                    <button class="btn btn-warning me-1" id="btnEdit" data-bs-toggle="modal" data-bs-target="#exampleModal">Edit</button>
+                                    <button class="btn btn-danger " data-id="'.$row['id'].'" data-bs-toggle="modal" id="btnDelete" data-bs-target="#exampleModal1">Delete</button>
                                 </td>
                             </tr>
                         ';
@@ -76,6 +78,7 @@ global $con;
       <div class="modal-body">
         <form action="" method="post" enctype="multipart/form-data">
             <div class="form-group">
+                <input type="hidden" name="hide_id" id="hide_id">
                 <label for="name" class="form-label">Name</label>
                 <input type="text" name="name" id="name" class="form-control">
             </div>
@@ -94,6 +97,7 @@ global $con;
             <div class="form-group">
                 <label for="image" class="form-label">Image</label>
                 <input type="file" name="image" id="image" class="form-control">
+                <input type="hidden" name="hide_image" id="hide_image">
             </div>
             <div class="form-group mt-3 d-flex justify-content-end">
                 <button type="button" class="btn btn-danger me-1" data-bs-dismiss="modal">Cancel</button>
@@ -102,6 +106,26 @@ global $con;
             </div>
         </form>
       </div>
+    </div>
+  </div>
+</div>
+ <div class="modal fade" id="exampleModal1" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exampleModalLabel">Are you sure to delete this product?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form action="delete.php" method="post">
+           <div class="form-group d-flex justify-content-end gap-2">
+            <input type="hidden" name="delete_id" id="delete_id">
+             <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-danger"  data-bs-dismiss="modal">Yes, delete it.</button>
+           </div>
+        </form>
+      </div>
+      
     </div>
   </div>
 </div>
@@ -118,19 +142,41 @@ global $con;
             $('#exampleModalLabel').html('Edit Skin Care');
             $('#save').hide();
             $('#edit').show();
+            // get data from table
+            const tr=$(this).parents('tr');
+            const t_code=tr.find('td').eq(0).text();
+            const t_name=tr.find('td').eq(1).text();
+            const t_price=tr.find('td').eq(2).text().split('$')[0];
+            const t_stock=tr.find('td').eq(3).text();
+            const t_expire=tr.find('td').eq(4).text();
+            const t_image=tr.find('img').eq(0).attr('src').split('/').pop();
+            //input data into form
+            $('#hide_id').val(t_code);
+            $('#name').val(t_name);
+            $('#price').val(t_price);
+            $('#stock').val(t_stock);
+            $('#expire').val(t_expire);
+            $('#hide_image').val(t_image);
         });
-        
+        $(document).on('click','#btnDelete',function(){
+            $('#delete_id').val($(this).attr('data-id'));
+        }) 
     });
+
 </script>
 <?php 
     include 'moveFile.php';
-    
+    date_default_timezone_set('Asia/Phnom_Penh');
     if($_SERVER['REQUEST_METHOD']=='POST'){
         $name=$_POST['name'];
         $stock=$_POST['stock'];
         $price=$_POST['price'];
         $expire=$_POST['expire'];
-        $image=moveFile('image');
+        if(!empty($_FILES['image']['name'])){
+            $image=moveFile('image');
+        }else{
+            $image=$_POST['hide_image'];
+        }   
         global $con;
         global $user_id;
         $btn=$_POST['btn'];
@@ -138,7 +184,19 @@ global $con;
             $insert="INSERT INTO `skincare`(`name`, `price`, `stock`, `image`, `userID`, `expire`) 
             VALUES ('$name','$price','$stock','$image','$user_id','$expire')";
             $res=$con->query($insert);
-            header('location: index.php');
+            if($res){
+                echo '<script>window.location.href="index.php"</script>';
+           }
+        }else if($btn=='Edit'){
+            $code=$_POST['hide_id'];
+            global $user_id;
+            $update_at=date('y-m-d H:i:s');
+           $update="UPDATE `skincare` SET `name`='$name',`price`='$price',`stock`='$stock',
+           `image`='$image',`userID`='$user_id',`expire`='$expire',`update_at`='$update_at' WHERE `id`='$code'";
+           $res=$con->query($update);
+           if($res){
+                echo '<script>window.location.href="index.php"</script>';
+           }
         }
     }
     
